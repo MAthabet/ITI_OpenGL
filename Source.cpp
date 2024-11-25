@@ -83,7 +83,6 @@ int Init()
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
 	CreateColoredCircle(300);
-	//CreateColoredTriangle();
 
 	glClearColor(0, .2, 0, 1);
 
