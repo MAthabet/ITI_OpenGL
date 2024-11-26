@@ -5,6 +5,8 @@
 #include<gl\glm\glm.hpp>
 
 const float PI = 22/7;
+const GLint WIDTH = 600, HEIGHT = 600;
+
 using namespace std;
 using namespace glm;
 
@@ -23,37 +25,10 @@ struct Vertex
 
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
 
-const GLint WIDTH = 600, HEIGHT = 600;
+void CreateColoredCircle(GLfloat r);
+
 GLuint VBO, BasiceprogramId;
 DrawingMode Current_DrawingMode = DrawingMode::Lines;
-
-void CreateColoredCircle(GLfloat r)
-{
-	Vertex CircleVertices[50];
-	r /= WIDTH;
-	float delta = 0;
-	for (int i = 0; i < 50; i++)
-	{
-		if (i%2 == 0)
-			CircleVertices[i] = { vec3(r * cos(delta),r * sin(delta) , 0), vec3(1,1,0) };
-		else
-		CircleVertices[i] = { vec3(r*cos(delta),r * sin(delta) , 0), vec3(0.5,0.4,0)};
-		delta += (2* PI / 49);
-	}
-	// create buffer object
-	glGenBuffers(1, &VBO);
-
-	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CircleVertices), CircleVertices, GL_STATIC_DRAW);
-
-	// shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-}
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
 {
@@ -82,9 +57,6 @@ int Init()
 	cout << "\tGLSL:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
-	CreateColoredCircle(300);
-
-	glClearColor(0, .2, 0, 1);
 
 	return 0;
 }
@@ -97,10 +69,10 @@ void Render()
 	{
 	case Points:
 		glPointSize(10);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINTS);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 		break;
 	case Lines:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		break;
 	case FilledTriangle:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -108,7 +80,6 @@ void Render()
 	default:
 		break;
 	}
-
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 50);
 }
 
@@ -129,6 +100,10 @@ int main()
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
 
 	if (Init()) return 1;
+
+	CreateColoredCircle(300);
+
+	glClearColor(0, .2, 0, 1);
 
 	while (window.isOpen())
 	{
@@ -167,4 +142,33 @@ int main()
 		window.display();
 	}
 	return 0;
+}
+
+void CreateColoredCircle(GLfloat r)
+{
+	Vertex CircleVertices[50];
+	r /= WIDTH;
+	float delta = 0;
+
+	for (int i = 0; i < 50; i++)
+	{
+		if (i % 2 == 0)
+			CircleVertices[i] = { vec3(r * cos(delta), r * sin(delta) , 0), vec3(1,1,0) };
+		else
+			CircleVertices[i] = { vec3(r * cos(delta), r * sin(delta) , 0), vec3(1,0,0) };
+		delta += (2 * PI / 48);
+	}
+	// create buffer object
+	glGenBuffers(1, &VBO);
+
+	// binding buffer object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(CircleVertices), CircleVertices, GL_STATIC_DRAW);
+
+	// shader
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
 }
