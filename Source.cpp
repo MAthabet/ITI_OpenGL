@@ -6,9 +6,13 @@
 
 
 const float PI = 3.14159f;
+
+const GLint WIDTH = 600, HEIGHT = WIDTH * 0.866;
+
+const int SierpinskiDepth = 5;
+
 using namespace std;
 using namespace glm;
-int SierpinskiDepth = 5;
 enum DrawingMode
 {
 	Points,
@@ -23,59 +27,11 @@ struct Vertex
 };
 
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
+void GenerateSierpinski(std::vector<Vertex>* vertices, vec3 a, vec3 b, vec3 c, int depth);
+void CreateColoredSierpinski(float depth);
 
-const GLint WIDTH = 600, HEIGHT = 600;
 GLuint VBO, BasicProgramId;
 DrawingMode Current_DrawingMode = DrawingMode::Lines;
-
-void GenerateSierpinski(std::vector<Vertex>* vertices, vec3 a, vec3 b, vec3 c, int depth) {
-	if (depth == 0) {
-		vec3 color = vec3((a.x + b.x + c.x) / 3.0f, (a.y + b.y + c.y) / 3.0f, 1.0f);
-		vertices->push_back({ a, color });
-		vertices->push_back({ b, color });
-		vertices->push_back({ c, color });
-		return;
-	}
-	else {
-		vec3 ab = (a + b) * 0.5f;
-		vec3 bc = (b + c) * 0.5f;
-		vec3 ca = (c + a) * 0.5f;
-
-		GenerateSierpinski(vertices, a, ab, ca, depth - 1);
-		GenerateSierpinski(vertices, ab, b, bc, depth - 1);
-		GenerateSierpinski(vertices, ca, bc, c, depth - 1);
-	}
-}
-void CreateColoredSierpinski(float depth)
-{
-	vector<Vertex> Sierpinski;
-
-	vec3 v1(-1, -1, 0); 
-	vec3 v2(1, -1, 0);   
-	vec3 v3(0, 1, 0);  
-
-	vector<Vertex> vertices;
-
-	GenerateSierpinski(&vertices, v1, v2, v3, depth);
-
-	// create buffer object
-	glGenBuffers(1, &VBO);
-
-	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-
-
-	// shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-}
-
-
-
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
 {
@@ -104,9 +60,6 @@ int Init()
 	cout << "\tGLSL:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasicProgramId);
-	//CreateColoredCircle(300);
-	//CreateColoredTriangle();
-	CreateColoredSierpinski(SierpinskiDepth);
 
 	glClearColor(0, .2, 0, 1);
 
@@ -121,10 +74,10 @@ void Render()
 	{
 	case Points:
 		glPointSize(10);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINTS);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 		break;
 	case Lines:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		break;
 	case FilledTriangle:
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -133,7 +86,7 @@ void Render()
 		break;
 	}
 
-	glDrawArrays(GL_TRIANGLES, 0, 3 * std::pow(3, SierpinskiDepth));
+	glDrawArrays(GL_TRIANGLES, 0, std::pow(3, SierpinskiDepth+1));
 }
 
 float theta = 0;
@@ -150,6 +103,8 @@ int main()
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
 
 	if (Init()) return 1;
+
+	CreateColoredSierpinski(SierpinskiDepth);
 
 	while (window.isOpen())
 	{
@@ -188,4 +143,50 @@ int main()
 		window.display();
 	}
 	return 0;
+}
+
+void GenerateSierpinski(std::vector<Vertex>* vertices, vec3 a, vec3 b, vec3 c, int depth) {
+	if (depth == 0) {
+		vec3 color = vec3((a.x + b.x + c.x) / 3.0f, (a.y + b.y + c.y) / 3.0f, 1.0f);
+		vertices->push_back({ a, color });
+		vertices->push_back({ b, color });
+		vertices->push_back({ c, color });
+		return;
+	}
+	else {
+		vec3 ab = (a + b) * 0.5f;
+		vec3 bc = (b + c) * 0.5f;
+		vec3 ca = (c + a) * 0.5f;
+
+		GenerateSierpinski(vertices, a, ab, ca, depth - 1);
+		GenerateSierpinski(vertices, ab, b, bc, depth - 1);
+		GenerateSierpinski(vertices, ca, bc, c, depth - 1);
+	}
+}
+void CreateColoredSierpinski(float depth)
+{
+	vector<Vertex> Sierpinski;
+
+	vec3 v1(-1, -1, 0);
+	vec3 v2(1, -1, 0);
+	vec3 v3(0, 1, 0);
+
+	vector<Vertex> vertices;
+
+	GenerateSierpinski(&vertices, v1, v2, v3, depth);
+
+	// create buffer object
+	glGenBuffers(1, &VBO);
+
+	// binding buffer object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+
+
+	// shader
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
 }
