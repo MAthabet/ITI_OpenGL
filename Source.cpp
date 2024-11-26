@@ -29,22 +29,16 @@ void CompileShader(const char* vertex_shader_file_name, const char* fragment_sha
 void drawLine(std::vector<vec3>*points)
 {
 	// create buffer object
-	//glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, points->size() * sizeof(vec3), points->data(), GL_DYNAMIC_DRAW);
 
 	// shader
 	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
 	glEnableVertexAttribArray(0);
 
-	/*glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);*/
-
 	glDrawArrays(GL_LINE_STRIP, 0, points->size());
-
-	//glDisableVertexAttribArray(0);
 }
 int Init()
 {
@@ -75,7 +69,7 @@ int Init()
 void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-	// Use the shader program before drawing
+
 	glUseProgram(BasiceprogramId);
 
 	for (std::vector<vec3>* line : lines)
