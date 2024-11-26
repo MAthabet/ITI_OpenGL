@@ -8,59 +8,44 @@ const float PI = 22/7;
 using namespace std;
 using namespace glm;
 
-enum DrawingMode
-{
-	Points,
-	Lines,
-	FilledTriangle
-};
-
 struct Vertex
 {
 	vec3 Position;
-	vec3 COlor;
+	vec3 Color;
 };
 
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
 
 const GLint WIDTH = 600, HEIGHT = 600;
 GLuint VBO, BasiceprogramId;
-DrawingMode Current_DrawingMode = DrawingMode::Lines;
 
-void CreateColoredCircle(GLfloat r)
-{
-	Vertex CircleVertices[50];
-	r /= WIDTH;
-	float delta = 0;
-	for (int i = 0; i < 50; i++)
-	{
-		if (i%2 == 0)
-			CircleVertices[i] = { vec3(r * cos(delta),r * sin(delta) , 0), vec3(1,1,0) };
-		else
-		CircleVertices[i] = { vec3(r*cos(delta),r * sin(delta) , 0), vec3(0.5,0.4,0)};
-		delta += (2* PI / 49);
-	}
-	// create buffer object
-	glGenBuffers(1, &VBO);
-
-	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CircleVertices), CircleVertices, GL_STATIC_DRAW);
-
-	// shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-}
+std::vector<std::vector<vec3>*>lines;
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
 {
 	programId = InitShader(vertex_shader_file_name, fragment_shader_file_namering);
 	glUseProgram(programId);
 }
+void drawLine(std::vector<vec3>*points)
+{
+	// create buffer object
+	//glGenBuffers(1, &VBO);
 
+	// binding buffer object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, points->size() * sizeof(vec3), points->data(), GL_DYNAMIC_DRAW);
+
+	// shader
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
+	glEnableVertexAttribArray(0);
+
+	/*glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);*/
+
+	glDrawArrays(GL_LINE_STRIP, 0, points->size());
+
+	//glDisableVertexAttribArray(0);
+}
 int Init()
 {
 	GLenum err = glewInit();
@@ -82,45 +67,22 @@ int Init()
 	cout << "\tGLSL:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
-	CreateColoredCircle(300);
-	//CreateColoredTriangle();
-
-	glClearColor(0, .2, 0, 1);
-
+	glClearColor(1, 1, 1, 1);
+	glGenBuffers(1, &VBO);
 	return 0;
 }
 
 void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
+	// Use the shader program before drawing
+	glUseProgram(BasiceprogramId);
 
-	switch (Current_DrawingMode)
+	for (std::vector<vec3>* line : lines)
 	{
-	case Points:
-		glPointSize(10);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINTS);
-		break;
-	case Lines:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
-		break;
-	case FilledTriangle:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		break;
-	default:
-		break;
+		glLineWidth(4);
+		drawLine(line);
 	}
-
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 50);
-}
-
-float theta = 0;
-void Update()
-{
-	// add all tick code
-	theta += 0.0001f;
-
-	GLuint Theta_Location = glGetUniformLocation(BasiceprogramId, "theta");
-	glUniform1f(Theta_Location, theta);
 }
 
 int main()
@@ -130,6 +92,10 @@ int main()
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
 
 	if (Init()) return 1;
+		
+	vec3 mousePos;
+
+	bool pressed = false;
 
 	while (window.isOpen())
 	{
@@ -138,33 +104,44 @@ int main()
 		{
 			switch (event.type)
 			{
-			case sf::Event::Closed:
-			{
-				window.close();
-				break;
-			}
-			case sf::Event::KeyPressed:
-			{
-				if (event.key.code == sf::Keyboard::Num1)
+				case sf::Event::Closed:
 				{
-					Current_DrawingMode = DrawingMode::Points;
+					window.close();
+					break;
 				}
-				if (event.key.code == sf::Keyboard::Num2)
+				case sf::Event::MouseButtonPressed:
 				{
-					Current_DrawingMode = DrawingMode::Lines;
+					if (!pressed)
+					{
+						lines.push_back(new (std::vector<vec3>));
+						mousePos = vec3(sf::Mouse::getPosition(window).x/ float(WIDTH/2) - 1.0f, -sf::Mouse::getPosition(window).y/ float(HEIGHT/2) + 1.0f,0);
+						lines[lines.size()-1]->push_back(mousePos);
+						pressed = true;
+					}
+					break;
 				}
-				if (event.key.code == sf::Keyboard::Num3)
+				case sf::Event::MouseButtonReleased:
 				{
-					Current_DrawingMode = DrawingMode::FilledTriangle;
+					if (pressed)
+					{
+						pressed = false;
+					}
+					break;
 				}
-				break;
+				case sf::Event::MouseMoved:
+				{
+					if (pressed)
+					{
+						mousePos = vec3(sf::Mouse::getPosition(window).x / float(WIDTH / 2) - 1.0f, -sf::Mouse::getPosition(window).y / float(HEIGHT / 2) + 1.0f, 0);
+						lines[lines.size()-1]->push_back(mousePos);
+					}
+					break;
+				}
 			}
-			}
+			
 		}
 
-		Update();
 		Render();
-
 		window.display();
 	}
 	return 0;
