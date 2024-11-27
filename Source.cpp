@@ -4,9 +4,6 @@
 #include <SFML/OpenGL.hpp>
 #include<gl\glm\glm.hpp>
 
-const float PI = 22/7;
-const GLint WIDTH = 600, HEIGHT = 600;
-
 using namespace std;
 using namespace glm;
 
@@ -25,10 +22,29 @@ struct Vertex
 
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
 
-void CreateColoredCircle(GLfloat r);
-
+const GLint WIDTH = 600, HEIGHT = 600;
 GLuint VBO, BasiceprogramId;
 DrawingMode Current_DrawingMode = DrawingMode::Lines;
+
+void pointsVerticies(int n)
+{
+	vector<vec3>points;
+	for (float i = 0; i < n; i ++)
+	{
+		points.push_back(vec3(2*i/float(n)-1, 0.5 * sin((-1 + 2 * i / float(n)) * 3.14 * 36) * sin((-1 + 2 * i / float(n)) * 3.14 * 3),0));
+	}
+
+	// create buffer object
+	glGenBuffers(1, &VBO);
+
+	// binding buffer object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(Vertex), points.data(), GL_STATIC_DRAW);
+
+	// shader
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
+	glEnableVertexAttribArray(0);
+}
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
 {
@@ -54,9 +70,11 @@ int Init()
 	cout << "\tVendor: " << glGetString(GL_VENDOR) << endl;
 	cout << "\tRenderer: " << glGetString(GL_RENDERER) << endl;
 	cout << "\tVersion: " << glGetString(GL_VERSION) << endl;
-	cout << "\tGLSL:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
+	pointsVerticies(500);
+
+	glClearColor(0, .2, 0, 1);
 
 	return 0;
 }
@@ -65,32 +83,15 @@ void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	switch (Current_DrawingMode)
-	{
-	case Points:
-		glPointSize(10);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-		break;
-	case Lines:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		break;
-	case FilledTriangle:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		break;
-	default:
-		break;
-	}
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 50);
+	glDrawArrays(GL_LINE_STRIP, 0, 500);
 }
 
 float theta = 0;
-void Update()
+void Update(float time)
 {
 	// add all tick code
-	theta += 0.0001f;
-
-	GLuint Theta_Location = glGetUniformLocation(BasiceprogramId, "theta");
-	glUniform1f(Theta_Location, theta);
+	GLuint Time_Location = glGetUniformLocation(BasiceprogramId, "time");
+	glUniform1f(Time_Location, time);
 }
 
 int main()
@@ -98,13 +99,9 @@ int main()
 	sf::ContextSettings context;
 	context.depthBits = 24;
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
-
+	window.setFramerateLimit(60);
 	if (Init()) return 1;
-
-	CreateColoredCircle(300);
-
-	glClearColor(0, .2, 0, 1);
-
+	sf::Clock clock;
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -117,58 +114,15 @@ int main()
 				window.close();
 				break;
 			}
-			case sf::Event::KeyPressed:
-			{
-				if (event.key.code == sf::Keyboard::Num1)
-				{
-					Current_DrawingMode = DrawingMode::Points;
-				}
-				if (event.key.code == sf::Keyboard::Num2)
-				{
-					Current_DrawingMode = DrawingMode::Lines;
-				}
-				if (event.key.code == sf::Keyboard::Num3)
-				{
-					Current_DrawingMode = DrawingMode::FilledTriangle;
-				}
-				break;
-			}
 			}
 		}
 
-		Update();
+		Update(clock.getElapsedTime().asSeconds());
+
 		Render();
 
 		window.display();
+
 	}
 	return 0;
-}
-
-void CreateColoredCircle(GLfloat r)
-{
-	Vertex CircleVertices[50];
-	r /= WIDTH;
-	float delta = 0;
-
-	for (int i = 0; i < 50; i++)
-	{
-		if (i % 2 == 0)
-			CircleVertices[i] = { vec3(r * cos(delta), r * sin(delta) , 0), vec3(1,1,0) };
-		else
-			CircleVertices[i] = { vec3(r * cos(delta), r * sin(delta) , 0), vec3(1,0,0) };
-		delta += (2 * PI / 48);
-	}
-	// create buffer object
-	glGenBuffers(1, &VBO);
-
-	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CircleVertices), CircleVertices, GL_STATIC_DRAW);
-
-	// shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
 }
