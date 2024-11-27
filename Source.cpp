@@ -31,7 +31,7 @@ void pointsVerticies(int n)
 	vector<vec3>points;
 	for (float i = 0; i < n; i ++)
 	{
-		points.push_back(vec3(2*i/float(n)-1, 0.5 * sin((-1 + 2 * i / float(n)) * 3.14 * 36) * sin((-1 + 2 * i / float(n)) * 3.14 * 3),0));
+		points.push_back(vec3(2*i/float(n)-1, 0,0));
 	}
 
 	// create buffer object
