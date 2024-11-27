@@ -7,26 +7,13 @@
 using namespace std;
 using namespace glm;
 
-enum DrawingMode
-{
-	Points,
-	Lines,
-	FilledTriangle
-};
-
-struct Vertex
-{
-	vec3 Position;
-	vec3 COlor;
-};
-
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
 
 const GLint WIDTH = 600, HEIGHT = 600;
 GLuint VBO, BasiceprogramId;
-DrawingMode Current_DrawingMode = DrawingMode::Lines;
 
-void pointsVerticies(int n)
+
+int pointsVerticies(int n)
 {
 	vector<vec3>points;
 	for (float i = 0; i < n; i ++)
@@ -39,11 +26,12 @@ void pointsVerticies(int n)
 
 	// binding buffer object
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(Vertex), points.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(vec3), points.data(), GL_STATIC_DRAW);
 
 	// shader
 	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(vec3), 0);
 	glEnableVertexAttribArray(0);
+	return n;
 }
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
@@ -72,7 +60,6 @@ int Init()
 	cout << "\tVersion: " << glGetString(GL_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
-	pointsVerticies(500);
 
 	glClearColor(0, .2, 0, 1);
 
@@ -82,11 +69,10 @@ int Init()
 void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-
-	glDrawArrays(GL_LINE_STRIP, 0, 500);
+	//it is just my birth date 
+	glDrawArrays(GL_LINE_STRIP, 0, pointsVerticies(2001));
 }
 
-float theta = 0;
 void Update(float time)
 {
 	// add all tick code
@@ -98,10 +84,15 @@ int main()
 {
 	sf::ContextSettings context;
 	context.depthBits = 24;
-	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
+	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SINE_WAVE!", sf::Style::Close, context);
 	window.setFramerateLimit(60);
+
 	if (Init()) return 1;
+
 	sf::Clock clock;
+
+	float time = 0;
+	float sign = 1;
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -116,8 +107,13 @@ int main()
 			}
 			}
 		}
+		if (time > 1 || time < 0)
+		{
+			sign = -sign;
 
-		Update(clock.getElapsedTime().asSeconds());
+		}
+			time += sign * clock.restart().asSeconds();
+		Update(time);
 
 		Render();
 
