@@ -1,65 +1,47 @@
+#define  _CRT_SECURE_NO_WARNINGS
+
 #include <iostream>
 #include <gl/glew/glew.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/OpenGL.hpp>
+
 #include<gl\glm\glm.hpp>
+#include<gl\glm\gtc\type_ptr.hpp>
+#include<gl\glm\gtx\transform.hpp>
+#include "objLoader.h"
 
 const float PI = 22/7;
 using namespace std;
 using namespace glm;
 
-enum DrawingMode
-{
-	Points,
-	Lines,
-	FilledTriangle
-};
-
-struct Vertex
-{
-	vec3 Position;
-	vec3 COlor;
-};
+vector<vec3>vertices;
+GLuint modelMatLoc, viewMatLoc, projMatLoc;
 
 GLuint InitShader(const char* vertex_shader_file_name, const char* fragment_shader_file_name);
 
 const GLint WIDTH = 600, HEIGHT = 600;
 GLuint VBO, BasiceprogramId;
-DrawingMode Current_DrawingMode = DrawingMode::Lines;
-
-void CreateColoredCircle(GLfloat r)
-{
-	Vertex CircleVertices[50];
-	r /= WIDTH;
-	float delta = 0;
-	for (int i = 0; i < 50; i++)
-	{
-		if (i%2 == 0)
-			CircleVertices[i] = { vec3(r * cos(delta),r * sin(delta) , 0), vec3(1,1,0) };
-		else
-		CircleVertices[i] = { vec3(r*cos(delta),r * sin(delta) , 0), vec3(0.5,0.4,0)};
-		delta += (2* PI / 49);
-	}
-	// create buffer object
-	glGenBuffers(1, &VBO);
-
-	// binding buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CircleVertices), CircleVertices, GL_STATIC_DRAW);
-
-	// shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(Vertex), (char*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-}
 
 void CompileShader(const char* vertex_shader_file_name, const char* fragment_shader_file_namering, GLuint& programId)
 {
 	programId = InitShader(vertex_shader_file_name, fragment_shader_file_namering);
 	glUseProgram(programId);
 }
+
+void CreateColoredCircle()
+{
+	// create buffer object
+	glGenBuffers(1, &VBO);
+
+	// binding buffer object
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vec3), vertices.data(), GL_STATIC_DRAW);
+
+	// shader
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
+}
+
 
 int Init()
 {
@@ -82,8 +64,17 @@ int Init()
 	cout << "\tGLSL:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << endl;
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
-	CreateColoredCircle(300);
-	//CreateColoredTriangle();
+
+	CreateColoredCircle();
+	modelMatLoc = glGetUniformLocation(BasiceprogramId, "modelMat");
+	viewMatLoc = glGetUniformLocation(BasiceprogramId, "viewMat");
+	projMatLoc = glGetUniformLocation(BasiceprogramId, "projMat");
+
+	glm::mat4 viewMat = glm::lookAt(glm::vec3(0, 0, 2.5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+	glUniformMatrix4fv(viewMatLoc, 1, GL_FALSE, glm::value_ptr(viewMat));
+
+	glm::mat4 projMat = glm::perspectiveFov(60.0f, (float)WIDTH, (float)HEIGHT, 0.1f, 100.0f);
+	glUniformMatrix4fv(projMatLoc, 1, GL_FALSE, glm::value_ptr(projMat));
 
 	glClearColor(0, .2, 0, 1);
 
@@ -93,34 +84,18 @@ int Init()
 void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
-
-	switch (Current_DrawingMode)
-	{
-	case Points:
-		glPointSize(10);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINTS);
-		break;
-	case Lines:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
-		break;
-	case FilledTriangle:
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		break;
-	default:
-		break;
-	}
-
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 50);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 }
 
-float theta = 0;
-void Update()
+void Update(float time)
 {
 	// add all tick code
-	theta += 0.0001f;
-
-	GLuint Theta_Location = glGetUniformLocation(BasiceprogramId, "theta");
-	glUniform1f(Theta_Location, theta);
+	mat4 ModelMat = glm::translate(glm::vec3(0, 0, 0.0f)) *
+		glm::rotate(46.7f*5, glm::vec3(0, 1, 0)) * glm::rotate(sin(2.0f * time) * 20, glm::vec3(1, 0, 0)) *
+		glm::scale(glm::vec3(1.0f, 1.0f, 1.0f));
+	
+	glUniformMatrix4fv(modelMatLoc, 1, GL_FALSE, glm::value_ptr(ModelMat));
 }
 
 int main()
@@ -128,9 +103,10 @@ int main()
 	sf::ContextSettings context;
 	context.depthBits = 24;
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "SFML works!", sf::Style::Close, context);
-
+	
+	bool res = loadOBJ("./test.txt", vertices);
 	if (Init()) return 1;
-
+	sf::Clock clk;
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -143,26 +119,11 @@ int main()
 				window.close();
 				break;
 			}
-			case sf::Event::KeyPressed:
-			{
-				if (event.key.code == sf::Keyboard::Num1)
-				{
-					Current_DrawingMode = DrawingMode::Points;
-				}
-				if (event.key.code == sf::Keyboard::Num2)
-				{
-					Current_DrawingMode = DrawingMode::Lines;
-				}
-				if (event.key.code == sf::Keyboard::Num3)
-				{
-					Current_DrawingMode = DrawingMode::FilledTriangle;
-				}
-				break;
-			}
 			}
 		}
 
-		Update();
+		Update(clk.getElapsedTime().asSeconds());
+		if (clk.getElapsedTime().asSeconds()>20) clk.restart();
 		Render();
 
 		window.display();
