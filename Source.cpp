@@ -28,7 +28,7 @@ void CompileShader(const char* vertex_shader_file_name, const char* fragment_sha
 	glUseProgram(programId);
 }
 
-void CreateColoredCircle()
+void CreateCow()
 {
 	// create buffer object
 	glGenBuffers(1, &VBO);
@@ -65,7 +65,7 @@ int Init()
 
 	CompileShader("VS.glsl", "FS.glsl", BasiceprogramId);
 
-	CreateColoredCircle();
+	CreateCow();
 	modelMatLoc = glGetUniformLocation(BasiceprogramId, "modelMat");
 	viewMatLoc = glGetUniformLocation(BasiceprogramId, "viewMat");
 	projMatLoc = glGetUniformLocation(BasiceprogramId, "projMat");
