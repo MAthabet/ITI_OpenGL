@@ -1,6 +1,7 @@
 #include<gl\glew\glew.h>
 #include<iostream>
 #include<fstream>
+
 using namespace std;
 
 #pragma region SHADER_FUNCTIONS
